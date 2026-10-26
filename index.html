@@ -1,0 +1,1839 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3SR - Gestão Financeira Digital</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for yield & evolution graphics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              navy: '#0F172A',
+              blue: '#1E3A8A',
+              accent: '#2563EB',
+              emerald: '#059669',
+              lightGreen: '#D1FAE5',
+              grayBg: '#F8FAFC'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="h-full text-slate-800 bg-slate-50 flex flex-col antialiased selection:bg-blue-500 selection:text-white">
+
+  <!-- TOAST NOTIFICATIONS CONTAINER -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- MAIN WRAPPER -->
+  <div id="app" class="min-h-screen flex flex-col pb-20 md:pb-0">
+    
+    <!-- TOP NAVIGATION BAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+          <!-- Logo -->
+          <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('dashboard')">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-900 to-blue-900 flex items-center justify-center text-white font-black text-xl shadow-md border border-blue-700/30">
+              <span class="tracking-tighter text-emerald-400">3</span>SR
+            </div>
+            <div>
+              <span class="text-xl font-extrabold tracking-tight text-slate-900 block leading-none">3SR</span>
+              <span class="text-[10px] font-semibold tracking-widest uppercase text-emerald-600 block">Gestão Digital</span>
+            </div>
+          </div>
+
+          <!-- Desktop Navigation -->
+          <nav id="desktop-nav" class="hidden md:flex items-center gap-1 font-medium text-sm text-slate-600">
+            <button onclick="switchTab('dashboard')" class="nav-btn px-3 py-2 rounded-lg hover:bg-slate-100 transition flex items-center gap-2 text-slate-900 font-semibold" data-target="dashboard">
+              <i class="fa-solid fa-chart-line text-blue-600"></i> Painel
+            </button>
+            <button onclick="switchTab('wallet')" class="nav-btn px-3 py-2 rounded-lg hover:bg-slate-100 transition flex items-center gap-2" data-target="wallet">
+              <i class="fa-solid fa-wallet text-slate-500"></i> Carteira
+            </button>
+            <button onclick="switchTab('deposit')" class="nav-btn px-3 py-2 rounded-lg hover:bg-slate-100 transition flex items-center gap-2" data-target="deposit">
+              <i class="fa-solid fa-qrcode text-emerald-600"></i> Depositar Pix
+            </button>
+            <button onclick="switchTab('withdraw')" class="nav-btn px-3 py-2 rounded-lg hover:bg-slate-100 transition flex items-center gap-2" data-target="withdraw">
+              <i class="fa-solid fa-arrow-up-from-bracket text-amber-600"></i> Saque
+            </button>
+            <button onclick="switchTab('yields')" class="nav-btn px-3 py-2 rounded-lg hover:bg-slate-100 transition flex items-center gap-2" data-target="yields">
+              <i class="fa-solid fa-percent text-purple-600"></i> Rendimentos
+            </button>
+            <button onclick="switchTab('support')" class="nav-btn px-3 py-2 rounded-lg hover:bg-slate-100 transition flex items-center gap-2" data-target="support">
+              <i class="fa-solid fa-headset text-blue-500"></i> Suporte
+            </button>
+          </nav>
+
+          <!-- Right Action Header Tools -->
+          <div class="flex items-center gap-3">
+            <!-- Mode Switch / Admin toggle -->
+            <button onclick="toggleAdminView()" id="admin-toggle-btn" class="text-xs bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-semibold py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-user-shield text-slate-600"></i> <span id="admin-btn-text">Painel Admin</span>
+            </button>
+
+            <!-- User Menu Button -->
+            <div id="user-header-profile" class="relative flex items-center gap-2 cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 border border-transparent hover:border-slate-200" onclick="switchTab('profile')">
+              <div class="w-8 h-8 rounded-full bg-blue-100 border border-blue-300 text-blue-900 flex items-center justify-center font-bold text-xs" id="header-avatar-initials">
+                UD
+              </div>
+              <div class="hidden sm:block text-left">
+                <span class="block text-xs font-bold text-slate-900 leading-tight" id="header-user-name">Usuário</span>
+                <span class="block text-[10px] text-emerald-600 font-semibold" id="header-user-status"><i class="fa-solid fa-circle-check"></i> Conta Ativa</span>
+              </div>
+            </div>
+
+            <!-- Auth Trigger Button (shown when logged out) -->
+            <button id="auth-tab-btn" onclick="openAuthModal()" class="hidden bg-blue-700 hover:bg-blue-800 text-white font-medium text-xs py-2 px-3.5 rounded-lg shadow-sm transition">
+              Entrar / Criar Conta
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      
+      <!-- INSTITUTIONAL BANNER (Dismissable) -->
+      <div id="notice-banner" class="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 rounded-2xl p-4 sm:p-5 text-white shadow-lg mb-6 relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+          <div class="flex items-start gap-3">
+            <div class="p-3 bg-emerald-500/20 rounded-xl border border-emerald-500/30 text-emerald-400 mt-0.5">
+              <i class="fa-solid fa-shield-halved text-xl"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="font-bold text-base text-white">Plataforma Digital 3SR</h2>
+                <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full">Rendimento Diário 0,003%</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                Rendimento automático em dias úteis processado pontualmente às 21:00h. Seus depósitos são processados via Pix com total transparência e segurança contábil individualizada.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button onclick="switchTab('share')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-qrcode"></i> QR Code Convite
+            </button>
+            <button onclick="document.getElementById('notice-banner').remove()" class="text-slate-400 hover:text-white p-2 text-sm">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: DASHBOARD -->
+      <section id="view-dashboard" class="tab-content space-y-6">
+        <!-- Top Key Metric Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Card 1: Saldo Disponível -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div class="flex justify-between items-center text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Saldo Disponível</span>
+              <div class="p-2 rounded-xl bg-blue-50 text-blue-700">
+                <i class="fa-solid fa-wallet"></i>
+              </div>
+            </div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight" id="dash-available-balance">
+              R$ 0,00
+            </div>
+            <div class="mt-2 flex items-center justify-between text-xs">
+              <span class="text-emerald-600 font-medium flex items-center gap-1">
+                <i class="fa-solid fa-circle-check"></i> Pronto p/ saque
+              </span>
+              <button onclick="switchTab('withdraw')" class="text-blue-600 font-bold hover:underline">Sacar &rarr;</button>
+            </div>
+          </div>
+
+          <!-- Card 2: Saldo Total Contabilizado -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div class="flex justify-between items-center text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Saldo Total</span>
+              <div class="p-2 rounded-xl bg-indigo-50 text-indigo-700">
+                <i class="fa-solid fa-vault"></i>
+              </div>
+            </div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight" id="dash-total-balance">
+              R$ 0,00
+            </div>
+            <div class="mt-2 text-xs text-slate-500 flex justify-between">
+              <span>Bloqueado/Pendente:</span>
+              <span class="font-bold text-slate-700" id="dash-pending-balance">R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Rendimentos Apurados -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div class="flex justify-between items-center text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Rendimentos Apurados</span>
+              <div class="p-2 rounded-xl bg-emerald-50 text-emerald-700">
+                <i class="fa-solid fa-chart-line"></i>
+              </div>
+            </div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-emerald-600 tracking-tight" id="dash-total-yield">
+              R$ 0,00
+            </div>
+            <div class="mt-2 flex items-center justify-between text-xs">
+              <span class="text-slate-500">Hoje (0,003%):</span>
+              <span class="font-bold text-emerald-600" id="dash-today-yield">+ R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Total Depositado / Saques -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div class="flex justify-between items-center text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+              <span>Movimentações</span>
+              <div class="p-2 rounded-xl bg-amber-50 text-amber-700">
+                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="block text-[10px] text-slate-400 font-semibold uppercase">Total Depósito</span>
+                <span class="text-base font-bold text-slate-900" id="dash-total-deposited">R$ 0,00</span>
+              </div>
+              <div class="text-right">
+                <span class="block text-[10px] text-slate-400 font-semibold uppercase">Total Sacado</span>
+                <span class="text-base font-bold text-slate-700" id="dash-total-withdrawn">R$ 0,00</span>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-100 flex gap-2">
+              <button onclick="switchTab('deposit')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 rounded-lg text-center transition">
+                + Depositar
+              </button>
+              <button onclick="switchTab('withdraw')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-1.5 rounded-lg text-center transition">
+                Sacar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Section: Quick Actions & Timer banner -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Left 2 Cols: Next Yield Timer & Chart -->
+          <div class="lg:col-span-2 space-y-6">
+            <!-- Next Yield Alert Box -->
+            <div class="bg-gradient-to-r from-blue-900 to-slate-900 text-white rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div class="space-y-1 text-center sm:text-left">
+                <div class="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full text-xs font-semibold border border-blue-400/30">
+                  <i class="fa-solid fa-clock"></i> Atualização Diária
+                </div>
+                <h3 class="text-lg font-bold">Próxima Apuração de Rendimentos</h3>
+                <p class="text-xs text-slate-300">Apuração de 0,003% fixada para às 21:00h (Dias úteis)</p>
+              </div>
+              <div class="bg-white/10 backdrop-blur-md px-5 py-3 rounded-xl border border-white/10 text-center min-w-[160px]">
+                <span class="block text-[10px] text-slate-300 uppercase tracking-wider font-bold">Contagem Regressiva</span>
+                <span id="yield-countdown" class="text-2xl font-black text-emerald-400 font-mono tracking-wider">--:--:--</span>
+              </div>
+            </div>
+
+            <!-- Mini Graphic Card -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="font-bold text-slate-900 text-base">Evolução do Patrimônio</h3>
+                  <p class="text-xs text-slate-500">Crescimento diário apurado pela 3SR</p>
+                </div>
+                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">+ 0,003% / dia</span>
+              </div>
+              <div class="h-64 relative w-full">
+                <canvas id="dashboardChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right 1 Col: Quick Actions & WhatsApp Card -->
+          <div class="space-y-6">
+            <!-- Action Hub -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <h3 class="font-bold text-slate-900 text-base mb-2">Ações Rápidas</h3>
+              
+              <button onclick="switchTab('deposit')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition group text-left">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    <i class="fa-solid fa-qrcode"></i>
+                  </div>
+                  <div>
+                    <span class="block font-bold text-sm text-slate-900">Depositar via Pix</span>
+                    <span class="block text-xs text-emerald-700">A partir de R$ 10,00</span>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-emerald-600 group-hover:translate-x-1 transition-transform"></i>
+              </button>
+
+              <button onclick="switchTab('withdraw')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 transition group text-left">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                  </div>
+                  <div>
+                    <span class="block font-bold text-sm text-slate-900">Solicitar Saque</span>
+                    <span class="block text-xs text-slate-500">Transferência para sua chave Pix</span>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-400 group-hover:translate-x-1 transition-transform"></i>
+              </button>
+
+              <button onclick="switchTab('share')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 transition group text-left">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    <i class="fa-solid fa-share-nodes"></i>
+                  </div>
+                  <div>
+                    <span class="block font-bold text-sm text-slate-900">Compartilhar App</span>
+                    <span class="block text-xs text-blue-700">QR Code de convite</span>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-blue-600 group-hover:translate-x-1 transition-transform"></i>
+              </button>
+            </div>
+
+            <!-- Dedicated Direct WhatsApp Box -->
+            <div class="bg-gradient-to-br from-emerald-600 to-teal-800 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl text-white">
+                  <i class="fa-brands fa-whatsapp"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm">Suporte Direto WhatsApp</h4>
+                  <span class="text-xs text-emerald-100 font-mono">47 99186-0467</span>
+                </div>
+              </div>
+              <p class="text-xs text-emerald-50 mb-4">
+                Atendimento personalizado para tirar dúvidas sobre seus depósitos, rendimentos e saques.
+              </p>
+              <a href="https://wa.me/5547991860467?text=Ol%C3%A1%2C%20suporte%203SR!%20Preciso%20de%20ajuda%20com%20a%20minha%20conta." target="_blank" rel="noopener" class="w-full bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+                <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i> Iniciar Conversa
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Transactions Table Section -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">Últimas Movimentações</h3>
+              <p class="text-xs text-slate-500">Histórico de depósitos, saques e rendimentos creditados</p>
+            </div>
+            <button onclick="switchTab('wallet')" class="text-xs font-bold text-blue-600 hover:text-blue-800 transition">Ver Extrato Completo &rarr;</button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                  <th class="pb-3 px-2">Data/Hora</th>
+                  <th class="pb-3 px-2">Descrição</th>
+                  <th class="pb-3 px-2">Tipo</th>
+                  <th class="pb-3 px-2 text-right">Valor</th>
+                  <th class="pb-3 px-2 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody id="dash-recent-tx-tbody" class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                <!-- JS Populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: CARTEIRA INDIVIDUAL -->
+      <section id="view-wallet" class="tab-content hidden space-y-6">
+        <!-- Wallet Details Header Card -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-6">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-2xl shadow">
+                <i class="fa-solid fa-id-card text-emerald-400"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-xl font-extrabold text-slate-900" id="wallet-holder-name">Titular da Conta</h2>
+                  <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200">Carteira Individual</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1 font-mono">
+                  ID de Registro: <span id="wallet-unique-id" class="font-bold text-slate-700">3SR-784920-BR</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Account Verification Status -->
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
+              <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
+                <i class="fa-solid fa-user-check text-lg"></i>
+              </div>
+              <div>
+                <span class="block text-xs font-bold text-slate-900">Status da Conta</span>
+                <span class="block text-xs text-emerald-600 font-medium">Titularidade Confirmada (CPF)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wallet Balance Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <span class="block text-xs font-semibold text-slate-500 uppercase">Saldo Contabilizado</span>
+              <span class="text-xl font-extrabold text-slate-900 mt-1 block" id="wallet-total-balance">R$ 0,00</span>
+            </div>
+            <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/60">
+              <span class="block text-xs font-semibold text-emerald-700 uppercase">Disponível p/ Saque</span>
+              <span class="text-xl font-extrabold text-emerald-700 mt-1 block" id="wallet-available-balance">R$ 0,00</span>
+            </div>
+            <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/60">
+              <span class="block text-xs font-semibold text-amber-700 uppercase">Bloqueado / Em Análise</span>
+              <span class="text-xl font-extrabold text-amber-700 mt-1 block" id="wallet-pending-balance">R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Audit Legal Disclaimer -->
+          <div class="mt-4 text-[11px] text-slate-500 bg-slate-100 p-3 rounded-lg border border-slate-200 flex items-start gap-2">
+            <i class="fa-solid fa-circle-info text-blue-600 mt-0.5"></i>
+            <span>
+              <strong>Nota Contábil:</strong> Esta carteira digital registra exclusivamente os aportes efetuados via Pix e a contabilização diária de rendimentos apurados de 0,003%. Todos os registros são imutáveis e auditáveis.
+            </span>
+          </div>
+        </div>
+
+        <!-- Full Statement Table with Filter -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h3 class="font-bold text-slate-900 text-lg">Extrato Financeiro Completo</h3>
+              <p class="text-xs text-slate-500">Histórico detalhado de todas as operações vinculadas ao titular</p>
+            </div>
+
+            <!-- Statement Filter Buttons -->
+            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+              <button onclick="filterStatement('ALL')" class="stmt-filter-btn px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-900" data-filter="ALL">Todos</button>
+              <button onclick="filterStatement('DEPOSIT')" class="stmt-filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900" data-filter="DEPOSIT">Depósitos</button>
+              <button onclick="filterStatement('WITHDRAW')" class="stmt-filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900" data-filter="WITHDRAW">Saques</button>
+              <button onclick="filterStatement('YIELD')" class="stmt-filter-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900" data-filter="YIELD">Rendimentos</button>
+            </div>
+          </div>
+
+          <!-- Statement Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 bg-slate-50/50">
+                  <th class="py-3 px-3">Protocolo / ID</th>
+                  <th class="py-3 px-3">Data e Hora</th>
+                  <th class="py-3 px-3">Descrição da Operação</th>
+                  <th class="py-3 px-3">Origem / Destino</th>
+                  <th class="py-3 px-3 text-right">Valor (R$)</th>
+                  <th class="py-3 px-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody id="wallet-statement-tbody" class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                <!-- JS populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: DEPÓSITO VIA PIX -->
+      <section id="view-deposit" class="tab-content hidden max-w-3xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+          
+          <div class="border-b border-slate-100 pb-4">
+            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Instantâneo via Pix</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-2">Depósito na Carteira 3SR</h2>
+            <p class="text-xs text-slate-500 mt-1">Selecione ou digite um valor para gerar a chave Pix e QR Code de pagamento.</p>
+          </div>
+
+          <!-- Quick Preset Values Grid (Starting at R$ 10) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Valores Rápido (A partir de R$ 10)</label>
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              <button onclick="setDepositValue(10)" class="deposit-preset-btn border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-800 font-bold py-2.5 rounded-xl text-sm transition text-center" data-val="10">R$ 10</button>
+              <button onclick="setDepositValue(25)" class="deposit-preset-btn border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-800 font-bold py-2.5 rounded-xl text-sm transition text-center" data-val="25">R$ 25</button>
+              <button onclick="setDepositValue(50)" class="deposit-preset-btn border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-800 font-bold py-2.5 rounded-xl text-sm transition text-center" data-val="50">R$ 50</button>
+              <button onclick="setDepositValue(100)" class="deposit-preset-btn border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-800 font-bold py-2.5 rounded-xl text-sm transition text-center" data-val="100">R$ 100</button>
+              <button onclick="setDepositValue(500)" class="deposit-preset-btn border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-800 font-bold py-2.5 rounded-xl text-sm transition text-center" data-val="500">R$ 500</button>
+              <button onclick="setDepositValue(1000)" class="deposit-preset-btn border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-800 font-bold py-2.5 rounded-xl text-sm transition text-center" data-val="1000">R$ 1.000</button>
+            </div>
+          </div>
+
+          <!-- Custom Value Input -->
+          <div>
+            <label for="deposit-input-val" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outro Valor (Mínimo R$ 10,00)</label>
+            <div class="relative rounded-xl shadow-xs">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">R$</div>
+              <input type="number" id="deposit-input-val" min="10" step="1" value="50" class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg font-bold text-slate-900" placeholder="0,00">
+            </div>
+          </div>
+
+          <button onclick="generatePixDeposit()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base">
+            <i class="fa-solid fa-qrcode"></i> Gerar QR Code Pix para o Pool
+          </button>
+
+          <!-- Generated QR Code Display Area (Initially Hidden) -->
+          <div id="pix-output-area" class="hidden border-t border-slate-200 pt-6 space-y-6">
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4">
+              <div class="inline-block bg-white p-4 rounded-xl shadow-md border border-slate-200">
+                <div id="qrcode-canvas-target" class="flex justify-center"></div>
+              </div>
+
+              <div>
+                <span class="text-xs text-slate-500 block uppercase font-bold">Chave Pix de Recebimento (Pool)</span>
+                <span class="text-lg font-black text-slate-900 font-mono" id="pix-phone-key-display">47 991860467</span>
+              </div>
+
+              <!-- Copia e Cola Payload Box -->
+              <div class="max-w-md mx-auto space-y-2">
+                <label class="block text-xs font-semibold text-slate-500 text-left">Código Pix Copia e Cola:</label>
+                <div class="flex gap-2">
+                  <input type="text" id="pix-copy-paste-code" readonly class="w-full bg-white border border-slate-300 rounded-xl text-xs px-3 py-2 font-mono text-slate-700 focus:outline-none" value="00020126580014BR.GOV.BCB.PIX011147991860467520400005303986540550.005802BR5915PLATAFORMA 3SR6009SAO PAULO62070503***6304A8F2">
+                  <button onclick="copyPixCode()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1 shrink-0">
+                    <i class="fa-solid fa-copy"></i> Copiar
+                  </button>
+                </div>
+              </div>
+
+              <div class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs text-left flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5"></i>
+                <span>Após concluir a transferência no aplicativo do seu banco, clique no botão de validação abaixo para creditar na sua carteira 3SR.</span>
+              </div>
+
+              <!-- Instant Simulation Confirmation Button -->
+              <button onclick="confirmSimulatedDeposit()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm shadow">
+                <i class="fa-solid fa-circle-check text-emerald-400"></i> Simular Confirmação de Pagamento Pix
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: SOLICITAÇÃO DE SAQUE -->
+      <section id="view-withdraw" class="tab-content hidden max-w-3xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+          
+          <div class="border-b border-slate-100 pb-4">
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Retirada de Saldo</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-2">Solicitar Saque via Pix</h2>
+            <p class="text-xs text-slate-500 mt-1">Os saques são processados para sua chave Pix cadastrada em poucas etapas.</p>
+          </div>
+
+          <!-- Balance info box -->
+          <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 flex justify-between items-center">
+            <div>
+              <span class="text-xs text-slate-500 font-semibold uppercase block">Saldo Disponível p/ Saque</span>
+              <span class="text-2xl font-extrabold text-slate-900" id="withdraw-available-display">R$ 0,00</span>
+            </div>
+            <span class="text-xs text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">Sem Taxa de Saque</span>
+          </div>
+
+          <form id="withdraw-form" onsubmit="handleWithdrawSubmit(event)" class="space-y-4">
+            <!-- Amount Input -->
+            <div>
+              <label for="withdraw-amount" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Valor do Saque (R$)</label>
+              <input type="number" id="withdraw-amount" min="1" step="0.01" required class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold text-lg text-slate-900" placeholder="0,00">
+            </div>
+
+            <!-- Pix Key Type -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="pix-key-type" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tipo de Chave Pix</label>
+                <select id="pix-key-type" class="w-full px-3.5 py-3 border border-slate-300 rounded-xl bg-white font-medium text-sm text-slate-800 focus:ring-2 focus:ring-blue-500">
+                  <option value="CPF">CPF / CNPJ</option>
+                  <option value="PHONE">Telefone</option>
+                  <option value="EMAIL">E-mail</option>
+                  <option value="RANDOM">Chave Aleatória (EVP)</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="pix-key-value" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Chave Pix de Destino</label>
+                <input type="text" id="pix-key-value" required class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-sm" placeholder="Informe sua chave Pix">
+              </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1 text-slate-600">
+              <span class="font-bold text-slate-900 block">Condições de Saque:</span>
+              <p>• O saque deve ser obrigatoriamente enviado para uma chave de titularidade do usuário cadastrado.</p>
+              <p>• Prazo de processamento: Até 24 horas úteis em dias com apuração regular.</p>
+            </div>
+
+            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3.5 rounded-xl shadow transition flex items-center justify-center gap-2 text-base">
+              <i class="fa-solid fa-paper-plane"></i> Confirmar Solicitação de Saque
+            </button>
+          </form>
+
+          <!-- Active Withdrawal Protocols Tracker -->
+          <div class="pt-6 border-t border-slate-200 space-y-3">
+            <h3 class="font-bold text-slate-900 text-sm uppercase tracking-wider">Acompanhar Solicitações de Saque</h3>
+            <div id="withdrawals-tracker-list" class="space-y-3">
+              <!-- JS populated withdrawal cards -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: RENDIMENTOS DIÁRIOS (0,003%) -->
+      <section id="view-yields" class="tab-content hidden space-y-6">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Regra 0,003% / Dia Útil</span>
+                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Apuração às 21:00h</span>
+              </div>
+              <h2 class="text-2xl font-extrabold text-slate-900 mt-2">Relatório Auditável de Rendimentos</h2>
+              <p class="text-xs text-slate-500 mt-1">Cálculos apurados exclusivamente sobre o saldo total contabilizado do titular.</p>
+            </div>
+
+            <!-- Manual Trigger for Simulation -->
+            <button onclick="triggerManualYieldProcess()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-xs transition flex items-center gap-1.5 self-start sm:self-center">
+              <i class="fa-solid fa-bolt text-amber-400"></i> Processar Rendimento Diário (Teste)
+            </button>
+          </div>
+
+          <!-- Yield Stats Overview Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-purple-50/60 p-5 rounded-2xl border border-purple-100">
+              <span class="text-xs font-semibold text-purple-700 uppercase block">Taxa Diária Aplicada</span>
+              <span class="text-3xl font-extrabold text-purple-900 mt-1 block">0,003%</span>
+              <span class="text-[11px] text-purple-700 mt-1 block">Multiplicador: 0.00003 em dias úteis</span>
+            </div>
+
+            <div class="bg-emerald-50/60 p-5 rounded-2xl border border-emerald-100">
+              <span class="text-xs font-semibold text-emerald-700 uppercase block">Total Acumulado</span>
+              <span class="text-3xl font-extrabold text-emerald-700 mt-1 block" id="yield-page-total">R$ 0,00</span>
+              <span class="text-[11px] text-emerald-600 mt-1 block">Credita diretamente no Saldo Disponível</span>
+            </div>
+
+            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+              <span class="text-xs font-semibold text-slate-500 uppercase block">Horário de Corte</span>
+              <span class="text-3xl font-extrabold text-slate-900 mt-1 block">21:00h</span>
+              <span class="text-[11px] text-slate-500 mt-1 block">Horário Oficial de Brasília</span>
+            </div>
+          </div>
+
+          <!-- Yield Simulator Tool -->
+          <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+            <h3 class="font-bold text-slate-900 text-base">Simulador de Projetado (0,003% ao dia)</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Valor de Aporte Simulado (R$)</label>
+                <input type="number" id="sim-amount" value="1000" oninput="calculateSimulation()" class="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Dias Úteis</label>
+                <input type="number" id="sim-days" value="30" oninput="calculateSimulation()" class="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 text-sm">
+              </div>
+              <div class="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
+                <span class="text-[10px] font-bold uppercase text-slate-400">Rendimento Calculado Estimado</span>
+                <span id="sim-result" class="text-lg font-extrabold text-emerald-600">R$ 0,90</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Yield History Log -->
+          <div class="space-y-3">
+            <h3 class="font-bold text-slate-900 text-base">Histórico Auditável de Crédito de Rendimentos</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 bg-slate-50">
+                    <th class="py-3 px-3">Data e Hora</th>
+                    <th class="py-3 px-3">Base de Cálculo (R$)</th>
+                    <th class="py-3 px-3">Taxa (%)</th>
+                    <th class="py-3 px-3 text-right">Rendimento Creditado</th>
+                  </tr>
+                </thead>
+                <tbody id="yields-log-tbody" class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: SUPORTE & MENSAGENS -->
+      <section id="view-support" class="tab-content hidden max-w-4xl mx-auto space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- Contact Options Column -->
+          <div class="space-y-4">
+            <!-- Direct WhatsApp Box -->
+            <div class="bg-emerald-600 rounded-2xl p-5 text-white shadow-sm space-y-3">
+              <div class="flex items-center gap-2">
+                <i class="fa-brands fa-whatsapp text-2xl"></i>
+                <h3 class="font-bold text-base">WhatsApp Oficial</h3>
+              </div>
+              <p class="text-xs text-emerald-100 leading-relaxed">
+                Fale diretamente com nossa equipe de suporte pelo número oficial:
+              </p>
+              <div class="font-mono text-base font-black bg-emerald-700/60 p-2.5 rounded-xl text-center border border-emerald-500">
+                47 991860467
+              </div>
+              <a href="https://wa.me/5547991860467?text=Ol%C3%A1%2C%20suporte%203SR!%20Preciso%20de%20ajuda." target="_blank" rel="noopener" class="w-full bg-white text-emerald-800 font-extrabold text-xs py-2.5 rounded-xl block text-center hover:bg-emerald-50 transition">
+                Abrir no WhatsApp
+              </a>
+            </div>
+
+            <!-- Ticket categories info -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <h4 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Atendimento Interno</h4>
+              <p class="text-xs text-slate-500">
+                Caso prefira, você pode enviar um ticket direto pela plataforma 3SR.
+              </p>
+              <div class="space-y-2 text-xs">
+                <div class="p-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-700">
+                  <span class="font-bold block">Horário de Funcionamento:</span>
+                  Segunda a Sexta: 08:00 às 20:00h
+                </div>
+                <div class="p-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-700">
+                  <span class="font-bold block">Prazo Médio de Resposta:</span>
+                  Até 30 minutos
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- In-App Ticket / Chat Interface -->
+          <div class="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[520px]">
+            <!-- Chat Header -->
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+              <div>
+                <h3 class="font-bold text-slate-900 text-sm">Central de Mensagens 3SR</h3>
+                <span class="text-[10px] text-emerald-600 font-medium"><i class="fa-solid fa-circle text-[8px]"></i> Suporte Online</span>
+              </div>
+              <span class="text-xs font-mono font-bold text-slate-500">Protocolo: #3SR-SUP-9921</span>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="support-messages-container" class="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/30">
+              <!-- System Bot welcome msg -->
+              <div class="flex items-start gap-2.5 max-w-[85%]">
+                <div class="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  3SR
+                </div>
+                <div class="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-xs shadow-xs text-xs text-slate-700 space-y-1">
+                  <span class="font-bold block text-slate-900 text-[11px]">Equipe de Suporte 3SR</span>
+                  <p>Olá! Como podemos ajudar você hoje? Escolha a categoria abaixo ou escreva sua mensagem.</p>
+                  <span class="text-[9px] text-slate-400 block text-right">Hoje 10:00</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="p-3 border-t border-slate-200 bg-white rounded-b-2xl space-y-2">
+              <div class="flex gap-2">
+                <select id="ticket-category" class="text-xs border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 font-medium text-slate-700 focus:outline-none">
+                  <option value="Depositos">Depósitos Pix</option>
+                  <option value="Saques">Solicitação de Saque</option>
+                  <option value="Cadastro">Cadastro & Identidade</option>
+                  <option value="Outros">Outros Assuntos</option>
+                </select>
+              </div>
+              <form onsubmit="sendSupportMessage(event)" class="flex gap-2">
+                <input type="text" id="support-input-msg" placeholder="Digite sua dúvida ou mensagem..." required class="flex-1 border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                  <i class="fa-solid fa-paper-plane"></i> Enviar
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: PERFIL & CONFIGURAÇÕES -->
+      <section id="view-profile" class="tab-content hidden max-w-3xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+          <div class="border-b border-slate-100 pb-4 flex justify-between items-center">
+            <div>
+              <h2 class="text-2xl font-extrabold text-slate-900">Perfil e Segurança</h2>
+              <p class="text-xs text-slate-500 mt-1">Gerencie seus dados de cadastro e opções de acesso.</p>
+            </div>
+            <button onclick="logoutUser()" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold px-3 py-1.5 rounded-lg transition">
+              <i class="fa-solid fa-right-from-bracket"></i> Sair da Conta
+            </button>
+          </div>
+
+          <form id="profile-form" onsubmit="saveProfileData(event)" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nome Completo</label>
+                <input type="text" id="prof-name" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-medium">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">CPF (Identificador)</label>
+                <input type="text" id="prof-cpf" disabled class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium bg-slate-100 text-slate-500">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">E-mail Cadastrado</label>
+                <input type="email" id="prof-email" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-medium">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Telefone / Celular</label>
+                <input type="text" id="prof-phone" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-medium">
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 space-y-4">
+              <h3 class="font-bold text-slate-900 text-sm">Segurança e Autenticação</h3>
+              
+              <div class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <div>
+                  <span class="block text-xs font-bold text-slate-900">Autenticação em Duas Etapas (2FA)</span>
+                  <span class="block text-[11px] text-slate-500">Confirmação por código em saques e acessos</span>
+                </div>
+                <input type="checkbox" id="prof-2fa-toggle" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
+              </div>
+
+              <div class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <div>
+                  <span class="block text-xs font-bold text-slate-900">Verificação de Identidade (KYC)</span>
+                  <span class="block text-[11px] text-emerald-600 font-semibold" id="prof-kyc-status">Verificado e Aprovado</span>
+                </div>
+                <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-md">Ativo</span>
+              </div>
+            </div>
+
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow transition">
+              Salvar Alterações do Perfil
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- VIEW: COMPARTILHAR / QR CODE LINK DE CONVITE -->
+      <section id="view-share" class="tab-content hidden max-w-2xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm text-center space-y-6">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-900 to-slate-900 text-white flex items-center justify-center mx-auto text-3xl shadow-md border border-blue-700">
+            <i class="fa-solid fa-qrcode text-emerald-400"></i>
+          </div>
+
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-900">Compartilhar Plataforma 3SR</h2>
+            <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Aponte a câmera do seu celular para o QR Code abaixo para acessar diretamente a plataforma digital de gestão de recursos.
+            </p>
+          </div>
+
+          <!-- Share QR Code Target -->
+          <div class="inline-block bg-white p-5 rounded-2xl border border-slate-200 shadow-md">
+            <div id="share-qrcode-target" class="flex justify-center"></div>
+          </div>
+
+          <!-- Referral Link Box -->
+          <div class="space-y-2 max-w-md mx-auto">
+            <label class="block text-xs font-semibold text-slate-500 text-left">Link Direto de Acesso:</label>
+            <div class="flex gap-2">
+              <input type="text" id="share-app-url" readonly class="w-full bg-slate-50 border border-slate-300 rounded-xl text-xs px-3 py-2 font-mono text-slate-700" value="https://3sr-digital.app/invite?ref=3SR-USER">
+              <button onclick="copyShareUrl()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1 shrink-0">
+                <i class="fa-solid fa-copy"></i> Copiar Link
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: PAINEL ADMINISTRATIVO (ADMIN DASHBOARD) -->
+      <section id="view-admin" class="tab-content hidden space-y-6">
+        <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-lg border border-slate-800 space-y-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Módulo de Gestão</span>
+                <span class="text-xs text-slate-400">Acesso Restrito do Administrador</span>
+              </div>
+              <h2 class="text-2xl font-black tracking-tight text-white mt-1">Painel Administrativo 3SR</h2>
+            </div>
+            <button onclick="toggleAdminView()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 transition">
+              Voltar à Visão Usuário
+            </button>
+          </div>
+
+          <!-- System Stats -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+              <span class="text-xs text-slate-400 font-semibold block uppercase">Total Usuários</span>
+              <span class="text-2xl font-bold text-white mt-1 block">1.482</span>
+            </div>
+            <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+              <span class="text-xs text-slate-400 font-semibold block uppercase">Volume Total Depósitos</span>
+              <span class="text-2xl font-bold text-emerald-400 mt-1 block" id="admin-stat-deposits">R$ 48.950,00</span>
+            </div>
+            <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+              <span class="text-xs text-slate-400 font-semibold block uppercase">Saques Pendentes</span>
+              <span class="text-2xl font-bold text-amber-400 mt-1 block" id="admin-stat-pending-w">1</span>
+            </div>
+            <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700">
+              <span class="text-xs text-slate-400 font-semibold block uppercase">Rendimento Acumulado</span>
+              <span class="text-2xl font-bold text-purple-400 mt-1 block" id="admin-stat-yields">R$ 1.468,50</span>
+            </div>
+          </div>
+
+          <!-- Admin Manual Actions & Audit -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Pending Withdrawals Manager -->
+            <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700 space-y-4">
+              <h3 class="font-bold text-base text-white">Fila de Aprovação de Saques</h3>
+              <div id="admin-pending-withdrawals-list" class="space-y-3">
+                <!-- JS Populated pending withdrawals with approve/reject buttons -->
+              </div>
+            </div>
+
+            <!-- Audit Logs & Yield Engine Controls -->
+            <div class="bg-slate-800/50 p-5 rounded-2xl border border-slate-700 space-y-4">
+              <h3 class="font-bold text-base text-white">Controle de Apuração & Auditoria</h3>
+              
+              <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-2">
+                <span class="text-xs font-bold text-slate-300 block">Apuração Diária (0,003%)</span>
+                <p class="text-xs text-slate-400">Dispara a rotina manual de apuração de rendimento em lote para todos os usuários cadastrados.</p>
+                <button onclick="triggerManualYieldProcess()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 rounded-lg transition">
+                  Executar Apuração das 21:00h Agora
+                </button>
+              </div>
+
+              <div class="text-xs text-slate-400 space-y-1">
+                <span class="font-bold text-slate-300 block">Registros de Segurança (LGPD & Audit):</span>
+                <p>• Trilha de auditoria criptografada ativada.</p>
+                <p>• Log de acessos IP: Sem atividades suspeitas registradas.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER & LEGAL DISCLAIMER -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black text-sm">
+              3SR
+            </div>
+            <span class="text-sm font-bold text-slate-900">3SR - Gestão Financeira Digital</span>
+          </div>
+          
+          <div class="flex flex-wrap gap-4 text-xs text-slate-500 font-medium">
+            <button onclick="openLegalModal('terms')" class="hover:text-slate-900">Termos de Uso</button>
+            <button onclick="openLegalModal('privacy')" class="hover:text-slate-900">Política de Privacidade (LGPD)</button>
+            <button onclick="openLegalModal('risks')" class="hover:text-slate-900">Aviso de Riscos & Apuração</button>
+            <a href="https://wa.me/5547991860467" target="_blank" class="hover:text-slate-900 text-emerald-600 font-bold">Contato WhatsApp: 47 991860467</a>
+          </div>
+        </div>
+
+        <div class="text-[11px] text-slate-400 leading-relaxed border-t border-slate-100 pt-4">
+          <p>© 2026 3SR Digital. Todos os direitos reservados. Os rendimentos apurados de 0,003% ao dia correspondem a regras operacionais previamente estabelecidas e registradas na conta individual do usuário.</p>
+        </div>
+      </div>
+    </footer>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 px-2 py-1.5 shadow-lg">
+      <div class="grid grid-cols-5 gap-1 text-center">
+        <button onclick="switchTab('dashboard')" class="mobile-nav-btn py-1 flex flex-col items-center text-blue-600" data-target="dashboard">
+          <i class="fa-solid fa-chart-line text-lg"></i>
+          <span class="text-[10px] font-bold mt-0.5">Painel</span>
+        </button>
+        <button onclick="switchTab('wallet')" class="mobile-nav-btn py-1 flex flex-col items-center text-slate-500" data-target="wallet">
+          <i class="fa-solid fa-wallet text-lg"></i>
+          <span class="text-[10px] font-medium mt-0.5">Carteira</span>
+        </button>
+        <button onclick="switchTab('deposit')" class="mobile-nav-btn py-1 flex flex-col items-center text-emerald-600" data-target="deposit">
+          <i class="fa-solid fa-qrcode text-lg"></i>
+          <span class="text-[10px] font-bold mt-0.5">Depositar</span>
+        </button>
+        <button onclick="switchTab('withdraw')" class="mobile-nav-btn py-1 flex flex-col items-center text-slate-500" data-target="withdraw">
+          <i class="fa-solid fa-arrow-up-from-bracket text-lg"></i>
+          <span class="text-[10px] font-medium mt-0.5">Saque</span>
+        </button>
+        <button onclick="switchTab('support')" class="mobile-nav-btn py-1 flex flex-col items-center text-slate-500" data-target="support">
+          <i class="fa-solid fa-headset text-lg"></i>
+          <span class="text-[10px] font-medium mt-0.5">Suporte</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- FLOATING WHATSAPP BUTTON (FOR QUICK MOBILE REACH) -->
+    <a href="https://wa.me/5547991860467?text=Ol%C3%A1%2C%20suporte%203SR!%20Preciso%20de%20ajuda." target="_blank" rel="noopener" class="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 bg-emerald-500 hover:bg-emerald-600 text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-2xl transition transform hover:scale-105" title="Contato WhatsApp 47 991860467">
+      <i class="fa-brands fa-whatsapp"></i>
+    </a>
+
+    <!-- AUTHENTICATION / REGISTRATION MODAL -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 max-h-[90vh] overflow-y-auto">
+        <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 text-xl">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div class="text-center mb-6">
+          <div class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center mx-auto text-xl font-black mb-2 shadow">
+            <span class="text-emerald-400">3</span>SR
+          </div>
+          <h3 id="auth-modal-title" class="text-xl font-extrabold text-slate-900">Cadastro de Conta 3SR</h3>
+          <p class="text-xs text-slate-500 mt-1">Acesse sua carteira digital individualizada</p>
+        </div>
+
+        <!-- Auth Tabs (Login vs Register) -->
+        <div class="flex bg-slate-100 p-1 rounded-xl mb-5 text-xs font-bold">
+          <button id="auth-tab-reg-btn" onclick="toggleAuthMode('register')" class="flex-1 py-2 rounded-lg bg-white shadow-xs text-slate-900">Criar Conta</button>
+          <button id="auth-tab-log-btn" onclick="toggleAuthMode('login')" class="flex-1 py-2 rounded-lg text-slate-600">Já tenho Conta</button>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <form id="register-form" onsubmit="handleRegisterSubmit(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nome Completo</label>
+            <input type="text" id="reg-name" required placeholder="Digite seu nome completo" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">CPF</label>
+            <input type="text" id="reg-cpf" required placeholder="000.000.000-00" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">E-mail</label>
+              <input type="email" id="reg-email" required placeholder="seu@email.com" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Telefone</label>
+              <input type="text" id="reg-phone" required placeholder="(47) 99999-9999" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Senha Segura</label>
+            <input type="password" id="reg-password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div class="flex items-start gap-2 pt-2">
+            <input type="checkbox" id="reg-terms" required class="mt-0.5 rounded text-blue-600">
+            <label for="reg-terms" class="text-[11px] text-slate-600">
+              Li e concordo com os <button type="button" onclick="openLegalModal('terms')" class="text-blue-600 underline font-semibold">Termos de Uso</button> e <button type="button" onclick="openLegalModal('privacy')" class="text-blue-600 underline font-semibold">Política de Privacidade</button>.
+            </label>
+          </div>
+
+          <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl transition text-xs shadow-md mt-2">
+            Finalizar Cadastro & Acessar
+          </button>
+        </form>
+
+        <!-- LOGIN FORM (Hidden by default) -->
+        <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4 hidden">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">E-mail ou CPF</label>
+            <input type="text" id="login-identifier" required placeholder="Digite seu e-mail ou CPF" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-bold text-slate-700 uppercase">Senha</label>
+              <button type="button" onclick="showToast('Sua solicitação de recuperação foi enviada ao e-mail cadastrado.', 'info')" class="text-[11px] text-blue-600 hover:underline">Esqueceu a senha?</button>
+            </div>
+            <input type="password" id="login-password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl transition text-xs shadow-md">
+            Entrar na Conta
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- LEGAL MODALS CONTAINER -->
+    <div id="legal-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 max-h-[85vh] overflow-y-auto space-y-4">
+        <button onclick="closeLegalModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 text-xl">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <h3 id="legal-modal-title" class="text-xl font-bold text-slate-900 border-b border-slate-100 pb-3">Termos e Condições</h3>
+        <div id="legal-modal-content" class="text-xs text-slate-600 space-y-3 leading-relaxed">
+          <!-- JS filled -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT APP LOGIC & STATE PERSISTENCE -->
+  <script>
+    // GLOBAL STATE DEFAULT SCHEMA
+    const DEFAULT_STATE = {
+      user: {
+        name: "Usuário Demonstrativo",
+        cpf: "123.456.789-00",
+        email: "demo@3sr.com.br",
+        phone: "(47) 99186-0467",
+        kycVerified: true,
+        twoFactor: true
+      },
+      wallet: {
+        totalDeposited: 1000.00,
+        totalWithdrawn: 0.00,
+        availableBalance: 1000.90,
+        totalBalance: 1000.90,
+        pendingBalance: 0.00,
+        totalYield: 0.90
+      },
+      transactions: [
+        {
+          id: "3SR-DEP-1001",
+          date: "2026-10-24 14:30:00",
+          desc: "Depósito Inicial Pix",
+          origin: "Pix Pool (47 991860467)",
+          type: "DEPOSIT",
+          amount: 1000.00,
+          status: "CONCLUDED"
+        },
+        {
+          id: "3SR-YLD-5001",
+          date: "2026-10-24 21:00:00",
+          desc: "Rendimento Diário 0,003%",
+          origin: "Apuração Automática 3SR",
+          type: "YIELD",
+          amount: 0.03,
+          status: "CONCLUDED"
+        },
+        {
+          id: "3SR-YLD-5002",
+          date: "2026-10-25 21:00:00",
+          desc: "Rendimento Diário 0,003%",
+          origin: "Apuração Automática 3SR",
+          type: "YIELD",
+          amount: 0.03,
+          status: "CONCLUDED"
+        },
+        {
+          id: "3SR-YLD-5003",
+          date: "2026-10-26 21:00:00",
+          desc: "Rendimento Diário 0,003%",
+          origin: "Apuração Automática 3SR",
+          type: "YIELD",
+          amount: 0.84,
+          status: "CONCLUDED"
+        }
+      ],
+      withdrawals: [],
+      yieldLogs: [
+        { date: "2026-10-24 21:00", baseAmount: 1000.00, rate: "0.003%", yieldAmount: 0.03 },
+        { date: "2026-10-25 21:00", baseAmount: 1000.03, rate: "0.003%", yieldAmount: 0.03 },
+        { date: "2026-10-26 21:00", baseAmount: 1000.06, rate: "0.003%", yieldAmount: 0.84 }
+      ],
+      isAdmin: false
+    };
+
+    let appState = JSON.parse(localStorage.getItem('3SR_APP_STATE')) || DEFAULT_STATE;
+
+    function saveState() {
+      localStorage.setItem('3SR_APP_STATE', JSON.stringify(appState));
+      updateUI();
+    }
+
+    // FORMATTING HELPERS
+    function formatBRL(val) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let bg = 'bg-slate-900 border-slate-700 text-white';
+      if(type === 'success') bg = 'bg-emerald-600 text-white';
+      if(type === 'error') bg = 'bg-red-600 text-white';
+      if(type === 'info') bg = 'bg-blue-600 text-white';
+
+      toast.className = `p-3.5 rounded-xl shadow-xl text-xs font-semibold border flex items-center justify-between pointer-events-auto transition duration-300 transform translate-y-2 ${bg}`;
+      toast.innerHTML = `
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>${msg}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white ml-3">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // TAB NAVIGATION LOGIC
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      const targetView = document.getElementById(`view-${tabId}`);
+      if(targetView) targetView.classList.remove('hidden');
+
+      // Update Desktop Nav Active States
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if(btn.dataset.target === tabId) {
+          btn.classList.add('bg-slate-100', 'text-slate-900', 'font-semibold');
+        } else {
+          btn.classList.remove('bg-slate-100', 'text-slate-900', 'font-semibold');
+        }
+      });
+
+      // Update Mobile Nav Active States
+      document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+        if(btn.dataset.target === tabId) {
+          btn.classList.add('text-blue-600', 'font-bold');
+        } else {
+          btn.classList.remove('text-blue-600', 'font-bold');
+        }
+      });
+
+      if(tabId === 'share') renderShareQRCode();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // MAIN UI UPDATER
+    function updateUI() {
+      // User Profile Headers
+      document.getElementById('header-user-name').innerText = appState.user.name;
+      const initials = appState.user.name.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();
+      document.getElementById('header-avatar-initials').innerText = initials || '3SR';
+      document.getElementById('wallet-holder-name').innerText = appState.user.name;
+
+      // Dashboard Cards
+      document.getElementById('dash-available-balance').innerText = formatBRL(appState.wallet.availableBalance);
+      document.getElementById('dash-total-balance').innerText = formatBRL(appState.wallet.totalBalance);
+      document.getElementById('dash-pending-balance').innerText = formatBRL(appState.wallet.pendingBalance);
+      document.getElementById('dash-total-yield').innerText = formatBRL(appState.wallet.totalYield);
+      document.getElementById('dash-total-deposited').innerText = formatBRL(appState.wallet.totalDeposited);
+      document.getElementById('dash-total-withdrawn').innerText = formatBRL(appState.wallet.totalWithdrawn);
+
+      const todayLog = appState.yieldLogs[appState.yieldLogs.length - 1];
+      document.getElementById('dash-today-yield').innerText = todayLog ? `+ ${formatBRL(todayLog.yieldAmount)}` : '+ R$ 0,00';
+
+      // Wallet View
+      document.getElementById('wallet-total-balance').innerText = formatBRL(appState.wallet.totalBalance);
+      document.getElementById('wallet-available-balance').innerText = formatBRL(appState.wallet.availableBalance);
+      document.getElementById('wallet-pending-balance').innerText = formatBRL(appState.wallet.pendingBalance);
+      document.getElementById('withdraw-available-display').innerText = formatBRL(appState.wallet.availableBalance);
+
+      // Yields Page
+      document.getElementById('yield-page-total').innerText = formatBRL(appState.wallet.totalYield);
+
+      // Profile Form Inputs
+      document.getElementById('prof-name').value = appState.user.name;
+      document.getElementById('prof-cpf').value = appState.user.cpf;
+      document.getElementById('prof-email').value = appState.user.email;
+      document.getElementById('prof-phone').value = appState.user.phone;
+      document.getElementById('prof-2fa-toggle').checked = appState.user.twoFactor;
+
+      renderDashboardRecentTxs();
+      renderWalletStatement('ALL');
+      renderWithdrawalsTracker();
+      renderYieldLogs();
+      renderAdminView();
+      updateChart();
+    }
+
+    // RECENT TRANSACTIONS TABLE
+    function renderDashboardRecentTxs() {
+      const tbody = document.getElementById('dash-recent-tx-tbody');
+      tbody.innerHTML = '';
+      const recent = appState.transactions.slice().reverse().slice(0, 5);
+
+      if(recent.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400">Nenhuma movimentação registrada.</td></tr>`;
+        return;
+      }
+
+      recent.forEach(tx => {
+        let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md">Concluído</span>`;
+        if(tx.status === 'PENDING') statusBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">Em Análise</span>`;
+        if(tx.status === 'REJECTED') statusBadge = `<span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-md">Recusado</span>`;
+
+        let sign = tx.type === 'WITHDRAW' ? '-' : '+';
+        let color = tx.type === 'WITHDRAW' ? 'text-red-600' : (tx.type === 'YIELD' ? 'text-purple-600 font-bold' : 'text-emerald-600 font-bold');
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-2 font-mono text-[11px]">${tx.date}</td>
+            <td class="py-3 px-2 font-semibold text-slate-800">${tx.desc}</td>
+            <td class="py-3 px-2 text-slate-500 text-[11px]">${tx.type}</td>
+            <td class="py-3 px-2 text-right font-mono ${color}">${sign} ${formatBRL(tx.amount)}</td>
+            <td class="py-3 px-2 text-center">${statusBadge}</td>
+          </tr>
+        `;
+      });
+    }
+
+    // WALLET FULL STATEMENT
+    function renderWalletStatement(filter = 'ALL') {
+      const tbody = document.getElementById('wallet-statement-tbody');
+      tbody.innerHTML = '';
+      
+      let list = appState.transactions.slice().reverse();
+      if(filter !== 'ALL') list = list.filter(t => t.type === filter);
+
+      if(list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">Nenhum registro encontrado para este filtro.</td></tr>`;
+        return;
+      }
+
+      list.forEach(tx => {
+        let statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md">Concluído</span>`;
+        if(tx.status === 'PENDING') statusBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">Em Análise</span>`;
+
+        let sign = tx.type === 'WITHDRAW' ? '-' : '+';
+        let color = tx.type === 'WITHDRAW' ? 'text-slate-900 font-bold' : 'text-emerald-600 font-bold';
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-3 font-mono text-[11px] text-slate-500">${tx.id}</td>
+            <td class="py-3 px-3 font-mono text-[11px]">${tx.date}</td>
+            <td class="py-3 px-3 font-bold text-slate-900">${tx.desc}</td>
+            <td class="py-3 px-3 text-slate-500 text-xs">${tx.origin}</td>
+            <td class="py-3 px-3 text-right font-mono ${color}">${sign} ${formatBRL(tx.amount)}</td>
+            <td class="py-3 px-3 text-center">${statusBadge}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function filterStatement(filter) {
+      document.querySelectorAll('.stmt-filter-btn').forEach(b => {
+        if(b.dataset.filter === filter) {
+          b.classList.add('bg-white', 'shadow-xs', 'text-slate-900');
+          b.classList.remove('text-slate-600');
+        } else {
+          b.classList.remove('bg-white', 'shadow-xs', 'text-slate-900');
+          b.classList.add('text-slate-600');
+        }
+      });
+      renderWalletStatement(filter);
+    }
+
+    // PIX DEPOSIT GENERATOR
+    function setDepositValue(val) {
+      document.getElementById('deposit-input-val').value = val;
+    }
+
+    function generatePixDeposit() {
+      const val = parseFloat(document.getElementById('deposit-input-val').value);
+      if(!val || val < 10) {
+        showToast("O valor mínimo de depósito por Pix é R$ 10,00.", "error");
+        return;
+      }
+
+      const outputArea = document.getElementById('pix-output-area');
+      const qrcodeTarget = document.getElementById('qrcode-canvas-target');
+      qrcodeTarget.innerHTML = '';
+
+      const pixPayload = `00020126580014BR.GOV.BCB.PIX0111479918604675204000053039865405${val.toFixed(2)}5802BR5915PLATAFORMA 3SR6009SAO PAULO62070503***6304A8F2`;
+      document.getElementById('pix-copy-paste-code').value = pixPayload;
+
+      new QRCode(qrcodeTarget, {
+        text: pixPayload,
+        width: 160,
+        height: 160,
+        colorDark : "#0F172A",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+      });
+
+      outputArea.classList.remove('hidden');
+      outputArea.scrollIntoView({ behavior: 'smooth' });
+      showToast(`QR Code Pix gerado para R$ ${val.toFixed(2)}.`, 'info');
+    }
+
+    function copyPixCode() {
+      const codeInput = document.getElementById('pix-copy-paste-code');
+      codeInput.select();
+      document.execCommand('copy');
+      showToast("Código Pix Copia e Cola copiado para a área de transferência!", "success");
+    }
+
+    function confirmSimulatedDeposit() {
+      const val = parseFloat(document.getElementById('deposit-input-val').value);
+      if(!val) return;
+
+      const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const txId = `3SR-DEP-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      appState.wallet.totalDeposited += val;
+      appState.wallet.availableBalance += val;
+      appState.wallet.totalBalance += val;
+
+      appState.transactions.push({
+        id: txId,
+        date: now,
+        desc: "Depósito Pix Confirmado",
+        origin: "Pool Pix (47 991860467)",
+        type: "DEPOSIT",
+        amount: val,
+        status: "CONCLUDED"
+      });
+
+      saveState();
+      document.getElementById('pix-output-area').classList.add('hidden');
+      showToast(`Depósito de ${formatBRL(val)} confirmado e creditado na sua carteira!`, 'success');
+      switchTab('dashboard');
+    }
+
+    // WITHDRAWAL REQUEST SYSTEM
+    function handleWithdrawSubmit(e) {
+      e.preventDefault();
+      const amount = parseFloat(document.getElementById('withdraw-amount').value);
+      const pixKey = document.getElementById('pix-key-value').value;
+      const pixType = document.getElementById('pix-key-type').value;
+
+      if(amount > appState.wallet.availableBalance) {
+        showToast("Saldo disponível insuficiente para realizar esta solicitação.", "error");
+        return;
+      }
+
+      if(!pixKey) {
+        showToast("Informe uma chave Pix válida.", "error");
+        return;
+      }
+
+      const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const protocol = `3SR-W-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      // Deduct from available, add to pending
+      appState.wallet.availableBalance -= amount;
+      appState.wallet.pendingBalance += amount;
+
+      appState.withdrawals.push({
+        protocol,
+        date: now,
+        amount,
+        pixType,
+        pixKey,
+        status: "EM_ANALISE" // SOLICITADO -> EM_ANALISE -> APROVADO -> CONCLUIDO
+      });
+
+      appState.transactions.push({
+        id: protocol,
+        date: now,
+        desc: `Solicitação de Saque (${pixType})`,
+        origin: pixKey,
+        type: "WITHDRAW",
+        amount,
+        status: "PENDING"
+      });
+
+      saveState();
+      document.getElementById('withdraw-form').reset();
+      showToast(`Saque solicitado com sucesso! Protocolo: ${protocol}`, "success");
+    }
+
+    function renderWithdrawalsTracker() {
+      const container = document.getElementById('withdrawals-tracker-list');
+      container.innerHTML = '';
+
+      if(appState.withdrawals.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400">Nenhuma solicitação de saque em andamento.</p>`;
+        return;
+      }
+
+      appState.withdrawals.slice().reverse().forEach(w => {
+        container.innerHTML += `
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-900 font-mono">${w.protocol}</span>
+                <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Status: ${w.status}</span>
+              </div>
+              <p class="text-slate-500 mt-0.5">Chave Pix (${w.pixType}): <span class="font-medium text-slate-700">${w.pixKey}</span></p>
+              <span class="text-[10px] text-slate-400 block">${w.date}</span>
+            </div>
+            <div class="text-right">
+              <span class="text-base font-extrabold text-slate-900 block">${formatBRL(w.amount)}</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // DAILY YIELD ENGINE (0,003%)
+    function triggerManualYieldProcess() {
+      if(appState.wallet.totalBalance <= 0) {
+        showToast("Saldo zero. Não há valor base para aplicação de rendimento.", "error");
+        return;
+      }
+
+      const rate = 0.00003; // 0.003%
+      const yieldAccrued = parseFloat((appState.wallet.totalBalance * rate).toFixed(2)) || 0.01;
+      const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+      appState.wallet.availableBalance += yieldAccrued;
+      appState.wallet.totalBalance += yieldAccrued;
+      appState.wallet.totalYield += yieldAccrued;
+
+      appState.yieldLogs.push({
+        date: now,
+        baseAmount: appState.wallet.totalBalance - yieldAccrued,
+        rate: "0.003%",
+        yieldAmount: yieldAccrued
+      });
+
+      appState.transactions.push({
+        id: `3SR-YLD-${Math.floor(1000 + Math.random()*9000)}`,
+        date: now,
+        desc: "Rendimento Diário 0,003% Apurado",
+        origin: "Motor Contábil 3SR",
+        type: "YIELD",
+        amount: yieldAccrued,
+        status: "CONCLUDED"
+      });
+
+      saveState();
+      showToast(`Rendimento de 0,003% (${formatBRL(yieldAccrued)}) creditado com sucesso!`, 'success');
+    }
+
+    function renderYieldLogs() {
+      const tbody = document.getElementById('yields-log-tbody');
+      tbody.innerHTML = '';
+
+      if(appState.yieldLogs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400">Nenhum registro de rendimento apurado ainda.</td></tr>`;
+        return;
+      }
+
+      appState.yieldLogs.slice().reverse().forEach(y => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-3 font-mono text-[11px]">${y.date}</td>
+            <td class="py-3 px-3 font-mono">${formatBRL(y.baseAmount)}</td>
+            <td class="py-3 px-3 font-bold text-purple-700">${y.rate}</td>
+            <td class="py-3 px-3 text-right font-mono font-bold text-emerald-600">+ ${formatBRL(y.yieldAmount)}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function calculateSimulation() {
+      const amount = parseFloat(document.getElementById('sim-amount').value) || 0;
+      const days = parseInt(document.getElementById('sim-days').value) || 0;
+      const rate = 0.00003;
+      const total = amount * Math.pow(1 + rate, days) - amount;
+      document.getElementById('sim-result').innerText = formatBRL(total);
+    }
+
+    // COUNTDOWN TO 21:00 TIMER
+    function startYieldCountdown() {
+      setInterval(() => {
+        const now = new Date();
+        const target = new Date();
+        target.setHours(21, 0, 0, 0);
+
+        if (now > target) {
+          target.setDate(target.getDate() + 1);
+        }
+
+        const diff = target - now;
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / 1000 / 60) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+
+        const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        document.getElementById('yield-countdown').innerText = formatted;
+      }, 1000);
+    }
+
+    // SUPPORT IN-APP CHAT BOT
+    function sendSupportMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('support-input-msg');
+      const cat = document.getElementById('ticket-category').value;
+      const msg = input.value.trim();
+      if(!msg) return;
+
+      const container = document.getElementById('support-messages-container');
+      
+      // User Message bubble
+      container.innerHTML += `
+        <div class="flex items-start gap-2.5 max-w-[85%] ml-auto flex-row-reverse">
+          <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+            ${appState.user.name[0]}
+          </div>
+          <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-xs shadow-xs text-xs space-y-1">
+            <span class="font-bold block text-blue-100 text-[10px]">Categoria: ${cat}</span>
+            <p>${msg}</p>
+          </div>
+        </div>
+      `;
+
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+
+      // Automated Bot response
+      setTimeout(() => {
+        container.innerHTML += `
+          <div class="flex items-start gap-2.5 max-w-[85%]">
+            <div class="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+              3SR
+            </div>
+            <div class="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-xs shadow-xs text-xs text-slate-700 space-y-1">
+              <span class="font-bold block text-slate-900 text-[11px]">Atendente Virtual 3SR</span>
+              <p>Sua mensagem sobre "${cat}" foi registrada no protocolo #3SR-SUP-9921. Nossa equipe humana também está disponível via WhatsApp: <strong>47 991860467</strong>.</p>
+            </div>
+          </div>
+        `;
+        container.scrollTop = container.scrollHeight;
+      }, 1000);
+    }
+
+    // SHARE QR CODE
+    function renderShareQRCode() {
+      const target = document.getElementById('share-qrcode-target');
+      target.innerHTML = '';
+      new QRCode(target, {
+        text: "https://3sr-digital.app/invite?ref=3SR-USER",
+        width: 180,
+        height: 180,
+        colorDark : "#0F172A",
+        colorLight : "#ffffff"
+      });
+    }
+
+    function copyShareUrl() {
+      const el = document.getElementById('share-app-url');
+      el.select();
+      document.execCommand('copy');
+      showToast("Link de acesso copiado!", "success");
+    }
+
+    // ADMIN VIEW TOGGLE & MANAGEMENT
+    function toggleAdminView() {
+      appState.isAdmin = !appState.isAdmin;
+      document.getElementById('admin-btn-text').innerText = appState.isAdmin ? 'Visão Usuário' : 'Painel Admin';
+      if(appState.isAdmin) {
+        switchTab('admin');
+        showToast("Modo Administrador Ativado", "info");
+      } else {
+        switchTab('dashboard');
+      }
+    }
+
+    function renderAdminView() {
+      document.getElementById('admin-stat-deposits').innerText = formatBRL(appState.wallet.totalDeposited + 47950);
+      document.getElementById('admin-stat-yields').innerText = formatBRL(appState.wallet.totalYield + 1467.60);
+      
+      const pendingList = document.getElementById('admin-pending-withdrawals-list');
+      pendingList.innerHTML = '';
+
+      const pendingW = appState.withdrawals.filter(w => w.status === 'EM_ANALISE');
+      document.getElementById('admin-stat-pending-w').innerText = pendingW.length;
+
+      if(pendingW.length === 0) {
+        pendingList.innerHTML = `<p class="text-xs text-slate-400">Nenhum saque pendente de aprovação manual.</p>`;
+        return;
+      }
+
+      pendingW.forEach(w => {
+        pendingList.innerHTML += `
+          <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-700 flex justify-between items-center text-xs">
+            <div>
+              <span class="font-bold text-white block">${w.protocol} - ${formatBRL(w.amount)}</span>
+              <span class="text-slate-400 text-[11px]">Pix (${w.pixType}): ${w.pixKey}</span>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="approveWithdrawal('${w.protocol}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs">Aprovar</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function approveWithdrawal(protocol) {
+      const w = appState.withdrawals.find(item => item.protocol === protocol);
+      if(w) {
+        w.status = 'CONCLUIDO';
+        appState.wallet.pendingBalance -= w.amount;
+        appState.wallet.totalWithdrawn += w.amount;
+        appState.wallet.totalBalance -= w.amount;
+
+        const tx = appState.transactions.find(t => t.id === protocol);
+        if(tx) tx.status = 'CONCLUDED';
+
+        saveState();
+        showToast(`Saque ${protocol} aprovado e processado!`, "success");
+      }
+    }
+
+    // AUTH & REGISTRATION MODAL CONTROLS
+    function openAuthModal() {
+      document.getElementById('auth-modal').classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+    }
+
+    function toggleAuthMode(mode) {
+      const regForm = document.getElementById('register-form');
+      const logForm = document.getElementById('login-form');
+      const regBtn = document.getElementById('auth-tab-reg-btn');
+      const logBtn = document.getElementById('auth-tab-log-btn');
+
+      if(mode === 'register') {
+        regForm.classList.remove('hidden');
+        logForm.classList.add('hidden');
+        regBtn.classList.add('bg-white', 'shadow-xs', 'text-slate-900');
+        logBtn.classList.remove('bg-white', 'shadow-xs', 'text-slate-900');
+      } else {
+        regForm.classList.add('hidden');
+        logForm.classList.remove('hidden');
+        logBtn.classList.add('bg-white', 'shadow-xs', 'text-slate-900');
+        regBtn.classList.remove('bg-white', 'shadow-xs', 'text-slate-900');
+      }
+    }
+
+    function handleRegisterSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('reg-name').value;
+      const cpf = document.getElementById('reg-cpf').value;
+      const email = document.getElementById('reg-email').value;
+      const phone = document.getElementById('reg-phone').value;
+
+      appState.user = {
+        name,
+        cpf,
+        email,
+        phone,
+        kycVerified: true,
+        twoFactor: false
+      };
+
+      saveState();
+      closeAuthModal();
+      showToast("Cadastro concluído com sucesso! Bem-vindo à 3SR.", "success");
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      closeAuthModal();
+      showToast("Autenticado com sucesso!", "success");
+    }
+
+    function saveProfileData(e) {
+      e.preventDefault();
+      appState.user.name = document.getElementById('prof-name').value;
+      appState.user.email = document.getElementById('prof-email').value;
+      appState.user.phone = document.getElementById('prof-phone').value;
+      appState.user.twoFactor = document.getElementById('prof-2fa-toggle').checked;
+      saveState();
+      showToast("Dados do perfil atualizados!", "success");
+    }
+
+    function logoutUser() {
+      showToast("Sessão encerrada.", "info");
+      openAuthModal();
+    }
+
+    // LEGAL MODAL
+    function openLegalModal(type) {
+      const modal = document.getElementById('legal-modal');
+      const title = document.getElementById('legal-modal-title');
+      const content = document.getElementById('legal-modal-content');
+
+      if(type === 'terms') {
+        title.innerText = "Termos de Uso e Adesão 3SR";
+        content.innerHTML = `
+          <p><strong>1. Da Função da Plataforma:</strong> A 3SR é uma plataforma de gestão financeira digital destinada ao registro contábil de depósitos e apuração de resultados operacionais.</p>
+          <p><strong>2. Dos Depósitos por Pix:</strong> Todos os depósitos efetuados destinam-se ao saldo da carteira individualizada do titular e são validados mediante confirmação bancária.</p>
+          <p><strong>3. Dos Saques:</strong> As solicitações de retirada são efetuadas exclusivamente para chaves Pix vinculadas ao titular cadastrado.</p>
+        `;
+      } else if(type === 'privacy') {
+        title.innerText = "Política de Privacidade (LGPD)";
+        content.innerHTML = `
+          <p>Em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), seus dados pessoais (Nome, CPF, Telefone, E-mail) são mantidos com criptografia e utilizados estritamente para segurança da sua conta e conciliação bancária.</p>
+        `;
+      } else {
+        title.innerText = "Aviso de Apuração de Rendimentos";
+        content.innerHTML = `
+          <p>Os rendimentos exibidos correspondem à regra de apuração diária de 0,003% fixada para processamento pontual às 21:00h nos dias úteis. Os resultados são auditados e consolidados no saldo disponível da plataforma.</p>
+        `;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeLegalModal() {
+      document.getElementById('legal-modal').classList.add('hidden');
+    }
+
+    // CHART.JS EVOLUTION CHART
+    let dashboardChartInstance = null;
+    function updateChart() {
+      const ctx = document.getElementById('dashboardChart');
+      if(!ctx) return;
+
+      const labels = appState.yieldLogs.map(l => l.date.substring(5, 10));
+      const dataPoints = appState.yieldLogs.map(l => l.baseAmount + l.yieldAmount);
+
+      if(dashboardChartInstance) dashboardChartInstance.destroy();
+
+      dashboardChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels.length ? labels : ['24/10', '25/10', '26/10'],
+          datasets: [{
+            label: 'Saldo Contabilizado (R$)',
+            data: dataPoints.length ? dataPoints : [1000.00, 1000.03, 1000.90],
+            borderColor: '#059669',
+            backgroundColor: 'rgba(5, 150, 105, 0.08)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 3,
+            pointBackgroundColor: '#059669'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: '#f1f5f9' } }
+          }
+        }
+      });
+    }
+
+    // INITIALIZATION ON LOAD
+    window.onload = function() {
+      updateUI();
+      startYieldCountdown();
+      calculateSimulation();
+    }
+  </script>
+</body>
+</html>
+```
